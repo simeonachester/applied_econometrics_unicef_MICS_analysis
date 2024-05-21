@@ -1,0 +1,38 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(foreign)
+library(haven)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(fmtr)
+library(reshape2)
+library(tidyr)
+data_directory_hh_rel <- "./datasets/datasets_variable_e - hh_rel.csv"
+data_directory_ind_rel <- "./datasets/datasets_variable_e - ind_rel.csv"
+hhrel_e_raw <- read.csv(data_directory_hh_rel)
+indrel_e_raw <- read.csv(data_directory_ind_rel)
+```
+
+```{r}
+hhrel_e_tibble <- as_tibble(hhrel_e_raw)
+
+
+gg_hhrel_e <- ggplot(hhrel_e_tibble, aes(x=Religious.Denomination, y=e_value, group=1)) + geom_line() + geom_point() + facet_grid(Year~.)  + labs(y=expression("Odds to reference category  ("*e**beta*")"), x="Household Head Religious Denomination") + geom_text_repel(aes(label=e_value))
+
+ggsave(path="../../../write-up/graphics", filename="gg_hhrel_e.png", plot=gg_hhrel_e, width=20, height = 8, units = "cm")
+```
+
+```{r}
+indrel_e_tibble <- as_tibble(indrel_e_raw)
+
+gg_indrel_e <- ggplot(indrel_e_tibble, aes(x=Religious.Denomination, y=e_value, group=1)) + geom_line() + geom_point() + labs(y=expression("Odds to reference category  ("*e**beta*")"), x="individual Religious Denomination") + geom_text_repel(aes(label=e_value)) + theme(axis.text.x = element_text(angle=45, vjust=.5))
+
+ggsave(path="../../../write-up/graphics", filename="gg_indrel_e.png", plot=gg_indrel_e, width=20, height = 8, units = "cm")
+```
+
+

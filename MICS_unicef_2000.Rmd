@@ -1,0 +1,64 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(foreign)
+library(haven)
+library(dplyr)
+library(ggplot2)
+library(fmtr)
+data_directory_2000_hl <- "./datasets_MICS_unicef/MICS_2000/GUHl.sav"
+data_directory_2000_hh <- "./datasets_MICS_unicef/MICS_2000/GUHH.SAV"
+raw_data_2000_hl <- read.spss(data_directory_2000_hl)
+raw_data_2000_hh <- read.spss(data_directory_2000_hh)
+```
+```{r}
+tbl_raw_data_2000_hl <- as_tibble(raw_data_2000_hl)
+# hi6 - Area
+# hi7 - Region
+# hl3 - Sex
+# hl4 - Age
+# ed16a - Highest School level
+# wlthscor
+
+df_2000_hl_normal <- tbl_raw_data_2000_hl %>% select(HI6, HI7, HL3, HL4, ED16A, WLTHSCOR) %>% droplevels()
+df_2000_hl_normal$windex10 <- ntile(df_2000_hl_normal$WLTHSCOR, 10)
+df_2000_hl_normal$windex10 <- as.factor(df_2000_hl_normal$windex10)
+
+lookup_normal <- c(REGIONNUMBER = "HI7" , AREA = "HI6",  SEX = "HL3", AGE = "HL4", HIGHESTEDUC = "ED16A")
+df_2000_hl_normal <- rename(df_2000_hl_normal, all_of(lookup_normal)) %>% droplevels() 
+df_2000_hl_normal <- na.omit(df_2000_hl_normal)
+```
+
+# normal filtering
+
+```{r}
+# AGE filtering
+df_2000_hl_normal$AGE <- as.integer(df_2000_hl_normal$AGE)
+df_2000_hl_normal <- df_2000_hl_normal %>% filter(as.integer(AGE) > 15) %>% droplevels()
+
+#HIGHESTEDUC filtering
+df_2000_hl_normal <- df_2000_hl_normal %>% filter(!HIGHESTEDUC %in% c("Don't know", "Non-standard curriculum")) %>% droplevels()
+df_2000_hl_normal$HIGHESTEDUC <- factor(df_2000_hl_normal$HIGHESTEDUC, ordered=TRUE, levels=c("Nursery", "Primary", "Secondary", "Higher"))
+
+# REGIONNUMBER filtering
+df_2000_hl_normal$REGIONNUMBER <- with(df_2000_hl_normal, factor(REGIONNUMBER, ordered=TRUE, levels = c('Region 1','Region 2','Region 3','Region 4','Region 5','Region 6','Region 7','Region 8','Region 9','Region 10'), labels = c(1,2,3,4,5,6,7,8,9,10)))
+
+#SEX filtering
+df_2000_hl_normal <- df_2000_hl_normal %>% filter(!SEX %in% c("Missing")) %>% droplevels()
+
+#windex
+#df_2000_hl_normal$windex10 <- factor(df_2000_hl_normal$windex10, ordered = TRUE, levels = c(1,2,3,4,5,6,7,8,9,10))
+summary(df_2000_hl_normal)
+```
+
+#EXPORT
+```{r}
+write_sav(df_2000_hl_normal, "cleaned_df_exports/df_2000_hl_normal.sav")
+```
+
+
+
+

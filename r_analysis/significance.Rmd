@@ -1,0 +1,45 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(foreign)
+library(haven)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(fmtr)
+library(reshape2)
+library(tidyr)
+data_directory_significance <- "./datasets/datasets_variable_e - significance.csv"
+significance_raw <- read.csv(data_directory_significance)
+```
+
+```{r}
+is_sig <- function(ROW){
+  p_value <- ROW[["p_value_sig"]]
+  b <- TRUE
+  if (p_value > 0.05){
+    b <- FALSE
+  }
+  return(b)
+}
+
+significance_tibble <- as_tibble(significance_raw)
+significance_tibble$category <- as.factor(significance_tibble$category)
+significance_tibble$year <- as.factor(significance_tibble$year)
+significance_tibble$variable <- as.factor(significance_tibble$variable)
+str(significance_tibble)
+
+significance_tibble$is_sig <- apply(significance_tibble, MARGIN = 1, is_sig)
+gg_significance <- ggplot(significance_tibble, aes(x=variable, y=p_value_sig)) + geom_point(aes(colour = is_sig)) + facet_grid(category ~ year) + theme(axis.text.x = element_text(angle=90, vjust=.5)) + labs(x="Variable Subcategories", y = "p-value Significance") + geom_text_repel(aes(label=p_value_sig))
+
+gg_significance
+```
+```{r}
+ggsave(path="../../../write-up/graphics", filename="gg_significance.png", plot=gg_significance, width=25, height = 30, units = "cm")
+```
+
+
+

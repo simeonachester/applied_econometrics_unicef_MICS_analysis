@@ -1,0 +1,136 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(foreign)
+library(haven)
+library(dplyr)
+library(ggplot2)
+library(fmtr)
+#data_directory_2019_hl <- "./datasets_MICS_unicef/MICS_2019/hl.sav"
+data_directory_2019_hl <- "./datasets_MICS_unicef/MICS_2019/hl.sav"
+data_directory_2019_hh <- "./datasets_MICS_unicef/MICS_2019/hh.sav"
+raw_data_2019_hl <- read.spss(data_directory_2019_hl)
+raw_data_2019_hh <- read.spss(data_directory_2019_hh)
+```
+
+```{r}
+makeID <- function(ROW) {
+  l <- c(ROW[["HH1"]], ROW[["HH2"]])
+  paste(unlist(l), collapse = '')
+}
+
+tbl_raw_data_2019_hl <- as_tibble(raw_data_2019_hl)
+tbl_raw_data_2019_hh_rel <- as_tibble(raw_data_2019_hh) %>% select(HH1, HH2, HC1A)
+
+#tbl_raw_data_2019_temp <- as_tibble(raw_data_2019_hl)
+tbl_raw_data_2019_hl$ID <- apply(tbl_raw_data_2019_hl, MARGIN = 1, makeID)
+tbl_raw_data_2019_hh_rel$ID <- apply(tbl_raw_data_2019_hh_rel, MARGIN = 1, makeID)
+
+tbl_raw_data_2019_merged <- merge(tbl_raw_data_2019_hh_rel, tbl_raw_data_2019_hl, by.x = c('ID'), by.y = c('ID'))
+```
+
+
+```{r}
+#HH1 - Cluster number
+#HH2 - Household number
+#HL4 - Sex
+#HL6 - Age
+#ED5A - highest level of education attended
+#HH6 - Area
+#HH7 - Region
+#windex10 - wealth index deciles
+#ethnicity - ethnicity of household head
+#helevel - education of household head
+#melevel - mother's education
+#felevel - father's education
+
+df_2019_hl_expanded <- tbl_raw_data_2019_merged %>% select(HL4, HL6, ED5A, HH6, HH7, windex10, ethnicity, helevel, melevel, felevel, HC1A) %>% droplevels()
+#df_2019_hl <- tbl_raw_data_2019_hl %>% select(HH1, HH2, HL4, HL6, ED5A, HH6, HH7, windex10, ethnicity, helevel, melevel, felevel) %>% droplevels()
+lookup_expanded <- c(AREA = "HH6", REGIONNUMBER = "HH7" , SEX = "HL4", AGE = "HL6", HHETHNICITY = "ethnicity",HIGHESTEDUC = "ED5A", HHEDUC="helevel", MEDUC="melevel", FEDUC="felevel", HHREL="HC1A")
+df_2019_hl_expanded <- rename(df_2019_hl_expanded, all_of(lookup_expanded)) %>% droplevels() 
+df_2019_hl_expanded <- na.omit(df_2019_hl_expanded)
+
+df_2019_hl_normal <- tbl_raw_data_2019_merged %>% select(HL4, HL6, ED5A, HH6, HH7, windex10, ethnicity, helevel, HC1A, wscore) %>% droplevels()
+lookup_normal <- c(AREA = "HH6", REGIONNUMBER = "HH7" , SEX = "HL4", AGE = "HL6", HHETHNICITY = "ethnicity", HIGHESTEDUC = "ED5A", HHEDUC="helevel", HHREL="HC1A")
+df_2019_hl_normal <- rename(df_2019_hl_normal, all_of(lookup_normal)) %>% droplevels()
+df_2019_hl_normal <- na.omit(df_2019_hl_normal)
+
+summary(df_2019_hl_normal$HHREL)
+```
+
+#2019 HL FILTERING
+```{r}
+# AGE filtering
+df_2019_hl_expanded$AGE <- as.integer(df_2019_hl_expanded$AGE)
+df_2019_hl_expanded <- df_2019_hl_expanded %>% filter(as.integer(AGE) > 15) %>% droplevels()
+
+#HIGHESTEDUC filtering
+df_2019_hl_expanded <- df_2019_hl_expanded %>% filter(!HIGHESTEDUC %in% c("DK")) %>% droplevels()
+
+df_2019_hl_expanded$HIGHESTEDUC <- factor(df_2019_hl_expanded$HIGHESTEDUC, ordered = TRUE, levels = c("NURSERY", "PRIMARY", "LOWER SECONDARY", "UPPER SECONDARY", "HIGHER"))
+
+# REGIONNUMBER filtering
+df_2019_hl_expanded$REGIONNUMBER <- with(df_2019_hl_expanded, factor(REGIONNUMBER, levels = c('BARIMA-WAINI','POMEROON-SUPENAAM','ESSEQUIBO ISLANDS-WEST DEMERARA','DEMERARA-MAHAICA','MAHAICA-BERBICE','EAST BERBICE-CORENTYNE','CUYUNI-MAZARUNI','POTARO-SIPARUNI','UPPER TAKUTU-UPPER ESSEQUIBO','UPPER DEMERARA-BERBICE'), labels = c(1,2,3,4,5,6,7,8,9,10), ordered = TRUE))
+
+#HHEDUC
+df_2019_hl_expanded <- df_2019_hl_expanded %>% filter(!HHEDUC %in% c("Missing/DK")) %>% droplevels()
+df_2019_hl_expanded$HHEDUC <- factor(df_2019_hl_expanded$HHEDUC, ordered = TRUE, levels=c("Pre-primary or none", "Primary", "Secondary", "Higher"))
+
+#MEDUC
+df_2019_hl_expanded <- df_2019_hl_expanded %>% filter(!MEDUC %in% c("Missing/DK")) %>% droplevels()
+df_2019_hl_expanded$MEDUC <- factor(df_2019_hl_expanded$MEDUC, levels = c("Pre-primary or none", "Primary", "Secondary", "Higher"),ordered = TRUE)
+
+#FEDUC
+df_2019_hl_expanded <- df_2019_hl_expanded %>% filter(!FEDUC %in% c("Missing/DK", "Biological father not in the household")) %>% droplevels()
+df_2019_hl_expanded$FEDUC <- factor(df_2019_hl_expanded$FEDUC, levels = c("Pre-primary or none", "Primary", "Secondary", "Higher"),ordered = TRUE)
+
+#HHETHNICITY
+df_2019_hl_expanded <- df_2019_hl_expanded %>% filter(!HHETHNICITY %in% c("Other ethnicity/DK/Missing")) %>% droplevels()
+summary(df_2019_hl_expanded)
+str(df_2019_hl_expanded)
+```
+
+# 2019 HL NORMAL FILTERING
+```{r}
+# AGE filtering
+df_2019_hl_normal$AGE <- as.integer(df_2019_hl_normal$AGE)
+df_2019_hl_normal <- df_2019_hl_normal %>% filter(as.integer(AGE) > 15) %>% droplevels()
+
+# REGIONNUMBER filtering
+df_2019_hl_normal$REGIONNUMBER <- with(df_2019_hl_normal, factor(REGIONNUMBER, ordered = TRUE, levels = c('BARIMA-WAINI','POMEROON-SUPENAAM','ESSEQUIBO ISLANDS-WEST DEMERARA','DEMERARA-MAHAICA','MAHAICA-BERBICE','EAST BERBICE-CORENTYNE','CUYUNI-MAZARUNI','POTARO-SIPARUNI','UPPER TAKUTU-UPPER ESSEQUIBO','UPPER DEMERARA-BERBICE'), labels = c(1,2,3,4,5,6,7,8,9,10)))
+
+#HHETHNICITY
+df_2019_hl_normal <- df_2019_hl_normal %>% filter(!HHETHNICITY %in% c("Other ethnicity/DK/Missing")) %>% droplevels()
+df_2019_hl_normal$HHETHNICITY <- factor(df_2019_hl_normal$HHETHNICITY, ordered = TRUE, levels = c("African/Black", "Amerindian", "East Indian", "Mixed Race"))
+
+#HIGHESTEDUC
+df_2019_hl_normal <- df_2019_hl_normal %>% filter(!HIGHESTEDUC %in% c("DK", "NO RESPONSE", "Missing/DK")) %>% droplevels()
+df_2019_hl_normal$HIGHESTEDUC <- factor(df_2019_hl_normal$HIGHESTEDUC, ordered = TRUE, levels = c("NURSERY", "PRIMARY", "LOWER SECONDARY", "UPPER SECONDARY", "HIGHER"))
+
+#HHREL
+df_2019_hl_normal <- df_2019_hl_normal %>% filter(!HHREL %in% c("NO RESPONSE")) %>% droplevels()
+df_2019_hl_normal$HHREL <- factor(df_2019_hl_normal$HHREL, ordered=TRUE, levels = c("CHRISTIAN", "HINDU", "RASTAFARIAN", "MUSLIM", "BAHAI", "NONE", "OTHER RELIGION"))
+
+#HHEDUC
+df_2019_hl_normal <- df_2019_hl_normal %>% filter(!HHEDUC %in% c("Missing/DK")) %>% droplevels()
+df_2019_hl_normal$HHEDUC <- factor(df_2019_hl_normal$HHEDUC, ordered=TRUE, levels=c("Pre-primary or none", "Primary", "Secondary", "Higher"))
+
+#windex
+df_2019_hl_normal$windex10 <- factor(df_2019_hl_normal$windex10, ordered = TRUE, levels = c(
+  "1st decile", "2nd decile", "3rd decile", "4th decile", "5th decile" ,"6th decile", "7th decile",
+  "8th decile","9th decile","10th decile"
+))
+
+summary(df_2019_hl_normal)
+#list(unique(df_2019_hl_normal$windex10))
+str(df_2019_hl_normal)
+```
+
+#EXPORT
+```{r}
+write_sav(df_2019_hl_normal, "cleaned_df_exports/df_2019_hl_normal.sav")
+write_sav(df_2019_hl_expanded, "cleaned_df_exports/df_2019_hl_expanded.sav")
+```

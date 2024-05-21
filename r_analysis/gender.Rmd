@@ -1,0 +1,41 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(foreign)
+library(haven)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(fmtr)
+library(reshape2)
+library(tidyr)
+data_directory_gender <- "./datasets/datasets_variable_e - gender.csv"
+data_directory_2019_hl_normal <- "../cleaned_df_exports/df_2019_hl_normal.sav"
+data_directory_2014_hl_normal <- "../cleaned_df_exports/df_2014_hl_normal.sav"
+data_directory_2006_hl_normal <- "../cleaned_df_exports/df_2006_hl_normal.sav"
+data_directory_2000_hl_normal <- "../cleaned_df_exports/df_2000_hl_normal.sav"
+gender_e_raw <- read.csv(data_directory_gender)
+df_2019_normal_raw <- read_spss(data_directory_2019_hl_normal)
+df_2006_normal_raw <- read_spss(data_directory_2006_hl_normal)
+df_2000_normal_raw <- read_spss(data_directory_2000_hl_normal)
+```
+
+```{r}
+gender_e_tibble <- as_tibble(gender_e_raw)
+
+#area_e_tibble$area <- with(area_e_tibble, factor(area, levels = c('urban', 'rural'), labels = c(1,2)))
+#df_area <- area_e_tibble %>% pivot_longer(cols=c("e_2019", "e_2014", "e_2006", "e_2000"), names_to="year", values_to = "e_value")
+#df_gender <- as_data_frame(gender_e_tibble)
+df_gender <- gender_e_tibble %>% pivot_longer(cols=c("X2019", "X2014", "X2006", "X2000"), names_to = "year", values_to = "e_value") %>% arrange(Gender)
+
+df_gender$Gender <- as.factor(df_gender$Gender)
+df_gender$year <- with(df_gender, factor(year, levels=c("X2019", "X2014", "X2006", "X2000"), labels=c(2019, 2014, 2006, 2000)))
+str(df_gender)
+gg_gender_e <- ggplot(df_gender, aes(x=year, y=e_value, group=Gender)) + geom_point() + geom_line(aes(color=Gender)) +  labs(y=expression("Odds to Females  ("*e**beta*")"), x="Year") + geom_text_repel(aes(label=e_value))
+gg_gender_e
+
+ggsave(path="../../../write-up/graphics", filename="gg_gender_e.png", plot=gg_gender_e, width=20, height = 12, units = "cm")
+```

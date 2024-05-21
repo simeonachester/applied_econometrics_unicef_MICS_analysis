@@ -1,0 +1,132 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(foreign)
+library(haven)
+library(dplyr)
+library(ggplot2)
+library(fmtr)
+#library(reshape2)
+library(tidyr)
+data_directory_region_number <- "./datasets/datasets_variable_e - region_number.csv"
+data_directory_2019_hl_normal <- "../cleaned_df_exports/df_2019_hl_normal.sav"
+data_directory_2014_hl_normal <- "../cleaned_df_exports/df_2014_hl_normal.sav"
+data_directory_2006_hl_normal <- "../cleaned_df_exports/df_2006_hl_normal.sav"
+data_directory_2000_hl_normal <- "../cleaned_df_exports/df_2000_hl_normal.sav"
+region_number_e_raw <- read.csv(data_directory_region_number)
+df_2019_normal_raw <- read_spss(data_directory_2019_hl_normal)
+df_2014_normal_raw <- read_spss(data_directory_2014_hl_normal)
+df_2006_normal_raw <- read_spss(data_directory_2006_hl_normal)
+df_2000_normal_raw <- read_spss(data_directory_2000_hl_normal)
+```
+
+```{r}
+region_number_e_tibble <- as_tibble(region_number_e_raw)
+#region_number_e_tibble$region_number <- as.factor(region_number_e_tibble$region_number)
+#summary(region_number_e_tibble)
+#region_number_e_tibble$region_number <- as.factor(region_number_e_tibble$region_number)
+#df <- melt(region_number_e_tibble, id.vars = c("e_2019", "e_2014", "e_2006", "e_2000"))
+df <- region_number_e_tibble %>% pivot_longer(cols=c("e_2019", "e_2014", "e_2006", "e_2000"), names_to = "year", values_to="e_value")
+
+gg_geo_e <- ggplot(df, aes(x=region_number, y=e_value)) + geom_line(aes(color=year)) + geom_point() + scale_x_continuous(breaks = seq(1, 10, by = 1)) + geom_hline(aes(yintercept=1, colour="baseline=1"))+
+  labs(y=expression("Odds to Region 10 ("*e**beta*")"), x="Region Number")
+
+gg_geo_e
+
+ggsave(path="gg_plots", filename="gg_geo_e.png", plot=gg_geo_e, width=20, height = 12, units = "cm")
+ggsave(path="../../../write-up/graphics", filename="gg_geo_e.png", plot=gg_geo_e, width=20, height = 12, units = "cm")
+
+```
+
+```{r}
+df_2019_normal_tibble <- as_tibble(df_2019_normal_raw)
+df_2014_normal_tibble <- as_tibble(df_2014_normal_raw)
+df_2006_normal_tibble <- as_tibble(df_2006_normal_raw)
+df_2000_normal_tibble <- as_tibble(df_2000_normal_raw)
+
+df_2019_normal <- df_2019_normal_tibble %>% select(HIGHESTEDUC, REGIONNUMBER)
+df_2019_normal$HIGHESTEDUC <- as.factor(df_2019_normal$HIGHESTEDUC)
+df_2019_normal$REGIONNUMBER <- as.factor(df_2019_normal$REGIONNUMBER)
+
+df_2014_normal <- df_2014_normal_tibble %>% select(HIGHESTEDUC, REGIONNUMBER)
+df_2014_normal$HIGHESTEDUC <- as.factor(df_2014_normal$HIGHESTEDUC)
+df_2014_normal$REGIONNUMBER <- as.factor(df_2014_normal$REGIONNUMBER)
+
+df_2006_normal <- df_2006_normal_tibble %>% select(HIGHESTEDUC, REGIONNUMBER)
+df_2006_normal$HIGHESTEDUC <- as.factor(df_2006_normal$HIGHESTEDUC)
+df_2006_normal$REGIONNUMBER <- as.factor(df_2006_normal$REGIONNUMBER)
+
+df_2000_normal <- df_2000_normal_tibble %>% select(HIGHESTEDUC, REGIONNUMBER)
+df_2000_normal$HIGHESTEDUC <- as.factor(df_2000_normal$HIGHESTEDUC)
+df_2000_normal$REGIONNUMBER <- as.factor(df_2000_normal$REGIONNUMBER)
+```
+
+```{r}
+t_2019 <- df_2019_normal %>% group_by(REGIONNUMBER, HIGHESTEDUC) %>% summarise(n=n())
+t_2019 <- t_2019 %>% group_by(REGIONNUMBER) %>% mutate(per= prop.table(n)*100)
+t_2019 <- t_2019 %>% mutate(year = 2019)
+
+t_2014 <- df_2014_normal %>% group_by(REGIONNUMBER, HIGHESTEDUC) %>% summarise(n=n())
+t_2014 <- t_2014 %>% group_by(REGIONNUMBER) %>% mutate(per= prop.table(n)*100)
+t_2014 <- t_2014 %>% mutate(year = 2014)
+
+t_2006 <- df_2006_normal %>% group_by(REGIONNUMBER, HIGHESTEDUC) %>% summarise(n=n())
+t_2006 <- t_2006 %>% group_by(REGIONNUMBER) %>% mutate(per= prop.table(n)*100)
+t_2006 <- t_2006 %>% mutate(year = 2006)
+
+t_2000 <- df_2000_normal %>% group_by(REGIONNUMBER, HIGHESTEDUC) %>% summarise(n=n())
+t_2000 <- t_2000 %>% group_by(REGIONNUMBER) %>% mutate(per= prop.table(n)*100)
+t_2000 <- t_2000 %>% mutate(year = 2000)
+```
+
+```{r}
+tgg <- rbind(t_2000, t_2006, t_2014, t_2019)
+```
+
+```{r}
+ggplot(tgg, aes(x=REGIONNUMBER, y=per, fill=HIGHESTEDUC)) + geom_bar(position="dodge", stat="identity") + facet_grid(year ~ .)
+
+figure_width <- 20
+figure_height <- 10
+
+```
+
+```{r}
+gg_region_2000 <- ggplot(t_2000, aes(x=REGIONNUMBER, y=per, fill=HIGHESTEDUC)) + geom_bar(position=position_dodge2(width=0.9,preserve = "single"), stat="identity") +
+  labs(title = "2000", x="Region Number", y="%")
+
+
+ggsave(path="gg_plots", filename="gg_region_2000.png", plot=gg_region_2000, width=figure_width, height = figure_height, units = "cm")
+ggsave(path="../../../write-up/graphics", filename="gg_region_2000.png", plot=gg_region_2000, width=figure_width, height = figure_height, units = "cm")
+
+```
+
+```{r}
+gg_region_2006 <- ggplot(t_2006, aes(x=REGIONNUMBER, y=per, fill=HIGHESTEDUC)) + geom_bar(position=position_dodge2(width=0.9,preserve = "single"), stat="identity") +
+  labs(title = "2006", x="Region Number", y="%")
+
+ggsave(path="gg_plots", filename="gg_region_2006.png", plot=gg_region_2006, width=figure_width, height = figure_height, units = "cm")
+ggsave(path="../../../write-up/graphics", filename="gg_region_2006.png", plot=gg_region_2006, width=figure_width, height = figure_height, units = "cm")
+
+```
+
+```{r}
+gg_region_2014 <- ggplot(t_2014, aes(x=REGIONNUMBER, y=per, fill=HIGHESTEDUC)) + geom_bar(position=position_dodge2(width=0.9,preserve = "single"), stat="identity") +
+  labs(title = "2014", x="Region Number", y="%")
+
+ggsave(path="gg_plots", filename="gg_region_2014.png", plot=gg_region_2014, width=figure_width, height = figure_height, units = "cm")
+ggsave(path="../../../write-up/graphics", filename="gg_region_2014.png", plot=gg_region_2014, width=figure_width, height = figure_height, units = "cm")
+
+```
+
+```{r}
+gg_region_2019 <- ggplot(t_2019, aes(x=REGIONNUMBER, y=per, fill=HIGHESTEDUC)) + geom_bar(position=position_dodge2(width=0.9,preserve = "single"), stat="identity") +
+  labs(title = "2019", x="Region Number", y="%")
+
+ggsave(path="gg_plots", filename="gg_region_2019.png", plot=gg_region_2019, width=figure_width, height = figure_height, units = "cm")
+ggsave(path="../../../write-up/graphics", filename="gg_region_2019.png", plot=gg_region_2019, width=figure_width, height = figure_height, units = "cm")
+```
+

@@ -1,0 +1,31 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(foreign)
+library(haven)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(fmtr)
+library(reshape2)
+library(tidyr)
+data_directory_distal_educ <- "./datasets/datasets_variable_e - distal_educ.csv"
+distal_educ_e_raw <- read.csv(data_directory_distal_educ)
+```
+
+```{r}
+distal_educ_e_tibble <- as_tibble(distal_educ_e_raw)
+distal_educ_e_tibble$education_level <- as.factor(distal_educ_e_tibble$education_level)
+distal_educ_e_tibble$year <- as.factor(distal_educ_e_tibble$year)
+distal_educ_e_tibble$distal_education_type <- as.factor(distal_educ_e_tibble$distal_education_type)
+str(distal_educ_e_tibble)
+
+gg_distal_educ_e <- ggplot(distal_educ_e_tibble, aes(y=e_value, x=education_level, group=1)) + geom_point() + geom_line() + facet_grid(year ~ distal_education_type) + labs(y=expression("Odds to reference category  ("*e**beta*")"), x="Education Level") + geom_text_repel(aes(label=e_value))
+```
+
+```{r}
+ggsave(path="../../../write-up/graphics", filename="gg_distal_educ_e.png", plot=gg_distal_educ_e, width=20, height = 12, units = "cm")
+```

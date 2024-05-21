@@ -1,0 +1,141 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(foreign)
+library(haven)
+library(dplyr)
+library(ggplot2)
+library(fmtr)
+data_directory_2006_hl <- "./datasets_MICS_unicef/MICS_2006/hl.sav"
+data_directory_2006_hh <- "./datasets_MICS_unicef/MICS_2006/hh.sav"
+raw_data_2006_hl <- read.spss(data_directory_2006_hl)
+raw_data_2006_hh <- read.spss(data_directory_2006_hh)
+```
+
+```{r}
+makeID <- function(ROW) {
+  l <- c(ROW[["HH1"]], ROW[["HH2"]])
+  paste(unlist(l), collapse = '')
+}
+
+tbl_raw_data_2006_hl <- as_tibble(raw_data_2006_hl)
+
+# HH1A - Region Number
+# HH6 - Area
+# HL4 - Sex
+# HL4E - Ethnicity of individual
+# HL4R - Religion of Individual
+# HL5 - Age
+# ED3A - Highest level of school attended
+# wltscore
+# felevel - father's education level
+# melevel - mother's education level
+# helevel - household head education level
+df_2006_hl_expanded <- tbl_raw_data_2006_hl %>% select(HH1A, HH6, HL4, HL4E, HL4R, HL5, ED3A, wlthscor, felevel, melevel) %>% droplevels()
+df_2006_hl_expanded$windex10 <- ntile(df_2006_hl_expanded$wlthscor, 10)
+df_2006_hl_expanded$windex10 <- as.factor(df_2006_hl_expanded$windex10)
+
+lookup_expanded <- c(REGIONNUMBER = "HH1A" , AREA = "HH6",  SEX = "HL4", INDETHNICITY = "HL4E", INDREL = "HL4R", AGE = "HL5", HIGHESTEDUC = "ED3A", MEDUC="melevel", FEDUC="felevel")
+df_2006_hl_expanded <- rename(df_2006_hl_expanded, all_of(lookup_expanded)) %>% droplevels() 
+df_2006_hl_expanded <- na.omit(df_2006_hl_expanded)
+
+
+df_2006_hl_normal <- tbl_raw_data_2006_hl %>% select(HH1A, HH6, HL4, HL4E, HL4R, HL5, ED3A, wlthscor) %>% droplevels()
+df_2006_hl_normal$windex10 <- ntile(df_2006_hl_normal$wlthscor, 10)
+df_2006_hl_normal$windex10 <- as.factor(df_2006_hl_normal$windex10)
+
+lookup_normal <- c(REGIONNUMBER = "HH1A" , AREA = "HH6",  SEX = "HL4", INDETHNICITY = "HL4E", INDREL = "HL4R", AGE = "HL5", HIGHESTEDUC = "ED3A")
+df_2006_hl_normal <- rename(df_2006_hl_normal, all_of(lookup_normal)) %>% droplevels() 
+df_2006_hl_normal <- na.omit(df_2006_hl_normal)
+
+summary(df_2006_hl_normal)
+```
+
+
+# expanded filtering
+```{r}
+# AGE filtering
+df_2006_hl_expanded$AGE <- as.integer(df_2006_hl_expanded$AGE)
+df_2006_hl_expanded <- df_2006_hl_expanded %>% filter(as.integer(AGE) > 15) %>% droplevels()
+
+#HIGHESTEDUC filtering
+df_2006_hl_expanded <- df_2006_hl_expanded %>% filter(!HIGHESTEDUC %in% c("DK", "NS/Missing")) %>% droplevels()
+
+# REGIONNUMBER filtering
+df_2006_hl_expanded$REGIONNUMBER <- with(df_2006_hl_expanded, factor(REGIONNUMBER, levels = c('Region 01','Region 02','Region 03','Region 04','Region 05','Region 06','Region 07','Region 08','Region 09','Region 10'), labels = c(1,2,3,4,5,6,7,8,9,10)))
+
+#SEX filtering
+df_2006_hl_expanded <- df_2006_hl_expanded %>% filter(!SEX %in% c("Missing")) %>% droplevels()
+
+#INETHNICITY filtering
+df_2006_hl_expanded <- df_2006_hl_expanded %>% filter(!INDETHNICITY %in% c("NS/Missing")) %>% droplevels()
+
+#FEDUC filtering
+df_2006_hl_expanded <- df_2006_hl_expanded %>% filter(!FEDUC %in% c("DK", "Missing/Educ not provided")) %>% droplevels()
+
+#MEDUC filtering
+df_2006_hl_expanded <- df_2006_hl_expanded %>% filter(!MEDUC %in% c("DK", "Missing/Educ not provided")) %>% droplevels()
+
+#INDREL filtering
+df_2006_hl_expanded <- df_2006_hl_expanded %>% filter(!INDREL %in% c("NS/Missing")) %>% droplevels()
+
+summary(df_2006_hl_expanded)
+```
+
+
+# normal filtering
+
+```{r}
+# AGE filtering
+df_2006_hl_normal$AGE <- as.integer(df_2006_hl_normal$AGE)
+df_2006_hl_normal <- df_2006_hl_normal %>% filter(as.integer(AGE) > 15) %>% droplevels()
+
+#HIGHESTEDUC filtering
+df_2006_hl_normal <- df_2006_hl_normal %>% filter(!HIGHESTEDUC %in% c("DK", "NS/Missing", "Non-standard curriculum")) %>% droplevels()
+df_2006_hl_normal$HIGHESTEDUC <- factor(df_2006_hl_normal$HIGHESTEDUC, ordered=TRUE, levels=c("Preschool/kindergarten", "Primary", "Secondary", "Post Secondary", "University"))
+
+# REGIONNUMBER filtering
+df_2006_hl_normal$REGIONNUMBER <- with(df_2006_hl_normal, factor(REGIONNUMBER, ordered=TRUE, levels = c('Region 01','Region 02','Region 03','Region 04','Region 05','Region 06','Region 07','Region 08','Region 09','Region 10'), labels = c(1,2,3,4,5,6,7,8,9,10)))
+
+#SEX filtering
+df_2006_hl_normal <- df_2006_hl_normal %>% filter(!SEX %in% c("Missing")) %>% droplevels()
+
+#INDETHNICITY filtering
+df_2006_hl_normal <- df_2006_hl_normal %>% filter(!INDETHNICITY %in% c("NS/Missing", "Other (Specify)", "Don't Know")) %>% droplevels()
+df_2006_hl_normal$INDETHNICITY <- factor(df_2006_hl_normal$INDETHNICITY, ordered = TRUE, levels=c("African/Black", "Amerindian", "East Indian", "Chinese", "Portuguese", "White", "Mixed"))
+
+#INDREL filtering
+df_2006_hl_normal <- df_2006_hl_normal %>% filter(!INDREL %in% c("NS/Missing", "DK")) %>% droplevels()
+df_2006_hl_normal$INDREL <- factor(df_2006_hl_normal$INDREL, ordered=TRUE, levels = c(
+  "Anglican",
+  "Methodist",
+  "Pentecostal",
+  "Roman Catholic",
+  "Jehovah Witness",
+  "Seven Days Adventist",
+  "Bahai",
+  "Muslim",
+  "Hindu",
+  "Rastafarian",
+  "Other Christians",
+  "None",
+  "Other Religion"
+))
+
+#windex
+df_2006_hl_normal$windex10 <- factor(df_2006_hl_normal$windex10, ordered=TRUE, levels = c(
+  1,2,3,4,5,6,7,8,9,10
+))
+summary(df_2006_hl_normal)
+str(df_2006_hl_normal)
+```
+
+#EXPORT
+```{r}
+write_sav(df_2006_hl_normal, "cleaned_df_exports/df_2006_hl_normal.sav")
+write_sav(df_2006_hl_expanded, "cleaned_df_exports/df_2006_hl_expanded.sav")
+```
+

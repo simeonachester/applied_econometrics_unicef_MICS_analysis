@@ -1,0 +1,49 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(foreign)
+library(haven)
+library(ggbreak)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(fmtr)
+library(reshape2)
+library(tidyr)
+data_directory_hh_ethnicity <- "./datasets/datasets_variable_e - hh_ethnicity.csv"
+data_directory_ind_ethnicity <- "./datasets/datasets_variable_e - ind_ethnicity.csv"
+hhethnicity_e_raw <- read.csv(data_directory_hh_ethnicity)
+indethnicity_e_raw <- read.csv(data_directory_ind_ethnicity)
+```
+
+```{r}
+hhethnicity_e_tibble <- as_tibble(hhethnicity_e_raw)
+hhethnicity_e_tibble$ethnicity <- recode(hhethnicity_e_tibble$ethnicity, "African/Black"="African")
+
+gg_hhethnicity_e <- ggplot(hhethnicity_e_tibble, aes(x=ethnicity, y=e_value, group=1)) + geom_line() + geom_point() + facet_grid(year~.) + 
+  labs(y=expression("Odds to Mixed Race  ("*e**beta*")"), x="Household Head Ethnicity") + geom_text_repel(aes(label=e_value))
+
+gg_hhethnicity_e
+
+ggsave(path="../../../write-up/graphics", filename="gg_hhethnicity_e.png", plot=gg_hhethnicity_e, width=20, height = 8, units = "cm")
+```
+
+```{r}
+indethnicity_e_tibble <- as_tibble(indethnicity_e_raw)
+indethnicity_e_tibble$ethnicity <- recode(indethnicity_e_tibble$ethnicity, "African/Black"="African")
+
+gg_indethnicity_e <- ggplot(indethnicity_e_tibble, aes(x=ethnicity, y=e_value, group=1)) + geom_line() + geom_point() +
+  facet_grid(year ~., scales="free") +
+  labs(y=expression("Odds to reference category ("*e**beta*")"), x="Individual Ethnicity") + geom_text_repel(aes(label=e_value)) +
+  theme(axis.text.x = element_text(angle=45, vjust=.5)) 
+
+gg_indethnicity_e
+
+ggsave(path="../../../write-up/graphics", filename="gg_indethnicity_e.png", plot=gg_indethnicity_e, width=20, height = 8, units = "cm")
+```
+
+
+

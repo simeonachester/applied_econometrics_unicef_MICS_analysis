@@ -1,0 +1,54 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(foreign)
+library(haven)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(fmtr)
+library(reshape2)
+library(tidyr)
+data_directory_area <- "./datasets/datasets_variable_e - area.csv"
+data_directory_2019_hl_normal <- "../cleaned_df_exports/df_2019_hl_normal.sav"
+data_directory_2014_hl_normal <- "../cleaned_df_exports/df_2014_hl_normal.sav"
+data_directory_2006_hl_normal <- "../cleaned_df_exports/df_2006_hl_normal.sav"
+data_directory_2000_hl_normal <- "../cleaned_df_exports/df_2000_hl_normal.sav"
+area_e_raw <- read.csv(data_directory_area)
+df_2019_normal_raw <- read_spss(data_directory_2019_hl_normal)
+df_2014_normal_raw <- read_spss(data_directory_2014_hl_normal)
+df_2006_normal_raw <- read_spss(data_directory_2006_hl_normal)
+df_2000_normal_raw <- read_spss(data_directory_2000_hl_normal)
+```
+
+```{r}
+area_e_tibble <- as_tibble(area_e_raw)
+
+
+#area_e_tibble$area <- with(area_e_tibble, factor(area, levels = c('urban', 'rural'), labels = c(1,2)))
+df_area <- area_e_tibble %>% pivot_longer(cols=c("e_2019", "e_2014", "e_2006", "e_2000"), names_to="year", values_to = "e_value")
+
+df_area$year <- with(df_area, factor(year, levels = c("e_2000", "e_2006", "e_2014", "e_2019"), labels=c(2000, 2006,2014,2019)))
+#df <- melt(area_e_tibble, id.vars = c("area"))
+#c 
+#df <- melt(area_e_tibble, id.vars = c("e_2000", "e_2006","e_2014", "e_2019"))
+#df$variable <- as.factor(df$variable)
+#df$area <- as.factor(df$area)
+str(df_area)
+gg_area_e <- ggplot(df_area, aes(x=year, y=e_value, group=area)) + geom_line() + geom_point(aes(color=area)) +
+  labs(y=expression("Odds to Rural area ("*e**beta*")"), x="Year") + geom_text_repel(aes(label=e_value))
+
+gg_area_e
+
+#summary(df)
+#+ geom_line(aes(color=year)) + geom_point() + scale_x_continuous(breaks = seq(1, 10, by = 1)) + geom_hline(aes(yintercept=1, colour="baseline=1"))+
+#  labs(y=expression("Odds to Region 10 ("*e**beta*")"), x="Region Number")
+
+#gg_geo_e
+
+#ggsave(path="gg_plots", filename="gg_geo_e.png", plot=gg_geo_e, width=20, height = 12, units = "cm")
+ggsave(path="../../../write-up/graphics", filename="gg_area_e.png", plot=gg_area_e, width=20, height = 12, units = "cm")
+```

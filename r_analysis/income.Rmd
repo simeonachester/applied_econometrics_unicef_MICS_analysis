@@ -1,0 +1,40 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(foreign)
+library(haven)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(fmtr)
+library(reshape2)
+library(tidyr)
+data_directory_income <- "./datasets/datasets_variable_e - income.csv"
+data_directory_wscore <- "./datasets/datasets_variable_e - wealth_wscore.csv"
+income_e_raw <- read.csv(data_directory_income)
+wscore_e_raw <- read.csv(data_directory_wscore)
+```
+
+```{r}
+income_e_tibble <- as_tibble(income_e_raw)
+income_e_tibble$Wealth.Score.Decile <- with(income_e_tibble, factor(Wealth.Score.Decile, levels = c(1,2,3,4,5,6,7,8,9,10), labels = c("1st","2nd","3rd","4th","5th","6th","7th","8th","9th","10th")))
+
+gg_income_e <- ggplot(income_e_tibble, aes(x=Wealth.Score.Decile, y=e_value, group=1)) + geom_line() + geom_point() + facet_grid(Year~.)  + labs(y=expression("Odds to reference category  ("*e**beta*")"), x="Household Wealth Score Decile") + geom_text_repel(aes(label=e_value))
+
+ggsave(path="../../../write-up/graphics", filename="gg_income_e.png", plot=gg_income_e, width=20, height = 12, units = "cm")
+
+```
+
+```{r}
+wscore_e_tibble <- as_tibble(wscore_e_raw)
+wscore_e_tibble$year <- as.factor(wscore_e_tibble$year)
+
+gg_wscore_e <- ggplot(wscore_e_tibble, aes(x=year, y=e_value, group=1)) + geom_line() + geom_point() + labs(y=expression("Odds to reference category  ("*e**beta*")"), x="Year") + geom_text_repel(aes(label=e_value))
+
+ggsave(path="../../../write-up/graphics", filename="gg_wscore_e.png", plot=gg_wscore_e, width=20, height = 8, units = "cm")
+#summary(wscore_e_tibble)
+```
+

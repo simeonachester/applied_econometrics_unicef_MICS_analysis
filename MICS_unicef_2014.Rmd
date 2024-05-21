@@ -1,0 +1,154 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(foreign)
+library(haven)
+library(dplyr)
+library(ggplot2)
+library(fmtr)
+data_directory_2014_hl <- "./datasets_MICS_unicef/MICS_2014/hl.sav"
+data_directory_2014_hh <- "./datasets_MICS_unicef/MICS_2014/hh.sav"
+raw_data_2014_hl <- read.spss(data_directory_2014_hl)
+raw_data_2014_hh <- read.spss(data_directory_2014_hh)
+```
+
+```{r}
+makeID <- function(ROW) {
+  l <- c(ROW[["HH1"]], ROW[["HH2"]])
+  paste(unlist(l), collapse = '')
+}
+
+tbl_raw_data_2014_hl <- as_tibble(raw_data_2014_hl)
+tbl_raw_data_2014_hh_rel <- as_tibble(raw_data_2014_hh) %>% select(HH1, HH2, HC1A)
+
+#tbl_raw_data_2019_temp <- as_tibble(raw_data_2019_hl)
+tbl_raw_data_2014_hl$ID <- apply(tbl_raw_data_2014_hl, MARGIN = 1, makeID)
+tbl_raw_data_2014_hh_rel$ID <- apply(tbl_raw_data_2014_hh_rel, MARGIN = 1, makeID)
+
+tbl_raw_data_2014_merged <- merge(tbl_raw_data_2014_hh_rel, tbl_raw_data_2014_hl, by.x = c('ID'), by.y = c('ID'))
+```
+
+```{r}
+#HL4 - Sex
+#HL6 - Age
+#HL6B - ethnicity of member
+#ED4A - highest level of education attended
+#HH6 - Area
+#HH7 - Region
+#HC1A - Religion of household head 
+#wscore - Combined wealth score
+#ethnicity - ethnicity of household head
+#helevel - education of household head
+#melevel - mother's education
+#felevel - father's education
+
+#windex10 - wealth index deciles
+
+
+df_2014_hl_expanded <- tbl_raw_data_2014_merged %>% select(HL4, HL6, HL6B, ED4A, HH6, HH7, HC1A, wscore, ethnicity, helevel, melevel, felevel) %>% droplevels()
+df_2014_hl_expanded$windex10 <- ntile(df_2014_hl_expanded$wscore, 10)
+df_2014_hl_expanded$windex10 <- as.factor(df_2014_hl_expanded$windex10)
+
+lookup_expanded <- c(AREA = "HH6", REGIONNUMBER = "HH7" , SEX = "HL4", AGE = "HL6", INDETHNICITY = "HL6B", HHETHNICITY = "ethnicity",HIGHESTEDUC = "ED4A", HHEDUC="helevel", MEDUC="melevel", FEDUC="felevel", HHREL="HC1A")
+df_2014_hl_expanded <- rename(df_2014_hl_expanded, all_of(lookup_expanded)) %>% droplevels() 
+df_2014_hl_expanded <- na.omit(df_2014_hl_expanded)
+
+df_2014_hl_normal <- tbl_raw_data_2014_merged %>% select(HL4, HL6, HL6B, ED4A, HH6, HH7, HC1A, wscore, ethnicity, helevel) %>% droplevels()
+df_2014_hl_normal$windex10 <- ntile(df_2014_hl_normal$wscore, 10)
+df_2014_hl_normal$windex10 <- as.factor(df_2014_hl_normal$windex10)
+
+lookup_normal <- c(AREA = "HH6", REGIONNUMBER = "HH7" , SEX = "HL4", AGE = "HL6", INDETHNICITY = "HL6B", HHETHNICITY = "ethnicity",HIGHESTEDUC = "ED4A", HHEDUC="helevel", HHREL="HC1A")
+df_2014_hl_normal <- rename(df_2014_hl_normal, all_of(lookup_normal)) %>% droplevels() 
+df_2014_hl_normal <- na.omit(df_2014_hl_normal)
+
+```
+
+# expanded filtering
+
+```{r}
+# AGE filtering
+df_2014_hl_expanded$AGE <- as.integer(df_2014_hl_expanded$AGE)
+df_2014_hl_expanded <- df_2014_hl_expanded %>% filter(as.integer(AGE) > 15) %>% droplevels()
+
+#HIGHESTEDUC filtering
+df_2014_hl_expanded <- df_2014_hl_expanded %>% filter(!HIGHESTEDUC %in% c("DK", "Missing")) %>% droplevels()
+
+# REGIONNUMBER filtering
+df_2014_hl_expanded$REGIONNUMBER <- with(df_2014_hl_expanded, factor(REGIONNUMBER, levels = c('Barima-Waini','Pomeroon-Supenaam','Essequibo Islands-West Demerara','Demerara-Mahaica','Mahaica-Berbice','East Berbice-Corentyne','Cuyuni-Mazaruni','Potaro-Siparuni','Upper Takutu-Upper Essequibo','Upper Demerara-Berbice'), labels = c(1,2,3,4,5,6,7,8,9,10)))
+
+#INETHNICITY filtering
+df_2014_hl_expanded <- df_2014_hl_expanded %>% filter(!INDETHNICITY %in% c("DK", "Missing")) %>% droplevels()
+
+#HHETHNICITY filtering
+df_2014_hl_expanded <- df_2014_hl_expanded %>% filter(!HHETHNICITY %in% c("Others/Missing/DK")) %>% droplevels()
+
+#HHEDUC filtering
+df_2014_hl_expanded <- df_2014_hl_expanded %>% filter(!HHEDUC %in% c("Missing/DK")) %>% droplevels()
+
+#HHREL filtering
+df_2014_hl_expanded <- df_2014_hl_expanded %>% filter(!HHREL %in% c("Missing")) %>% droplevels()
+
+#MEDUC filtering
+df_2014_hl_expanded <- df_2014_hl_expanded %>% filter(!MEDUC %in% c("Mother not in household", "Missing/DK")) %>% droplevels()
+
+#MEDUC filtering
+df_2014_hl_expanded <- df_2014_hl_expanded %>% filter(!FEDUC %in% c("Father not in household", "Missing/DK")) %>% droplevels()
+
+summary(df_2014_hl_expanded)
+```
+
+# normal filtering
+```{r}
+# AGE filtering
+df_2014_hl_normal$AGE <- as.integer(df_2014_hl_normal$AGE)
+df_2014_hl_normal <- df_2014_hl_normal %>% filter(AGE > 15) %>% droplevels()
+
+#HIGHESTEDUC filtering
+df_2014_hl_normal <- df_2014_hl_normal %>% filter(!HIGHESTEDUC %in% c("DK", "Missing")) %>% droplevels()
+df_2014_hl_normal$HIGHESTEDUC <- factor(df_2014_hl_normal$HIGHESTEDUC, ordered=TRUE, levels = c("Nursery", "Primary", "Secondary", "Higher"))
+
+# REGIONNUMBER filtering
+df_2014_hl_normal$REGIONNUMBER <- with(df_2014_hl_normal, factor(REGIONNUMBER, levels = c('Barima-Waini','Pomeroon-Supenaam','Essequibo Islands-West Demerara','Demerara-Mahaica','Mahaica-Berbice','East Berbice-Corentyne','Cuyuni-Mazaruni','Potaro-Siparuni','Upper Takutu-Upper Essequibo','Upper Demerara-Berbice'), labels = c(1,2,3,4,5,6,7,8,9,10)))
+
+#INDETHNICITY filtering
+df_2014_hl_normal <- df_2014_hl_normal %>% filter(!INDETHNICITY %in% c("DK", "Missing")) %>% droplevels()
+df_2014_hl_normal$INDETHNICITY <- factor(df_2014_hl_normal$INDETHNICITY, ordered=TRUE, levels=c("East Indian", "African", "Portuguese", "Amerindian","Chinese","Other", "Mixed Race"))
+
+#HHETHNICITY filtering
+df_2014_hl_normal <- df_2014_hl_normal %>% filter(!HHETHNICITY %in% c("Others/Missing/DK")) %>% droplevels()
+df_2014_hl_normal$HHETHNICITY <- factor(df_2014_hl_normal$HHETHNICITY, ordered=TRUE, 
+                                        levels=c("East Indian", "African", "Amerindian", "Mixed Race"))
+
+#HHEDUC filtering
+df_2014_hl_normal <- df_2014_hl_normal %>% filter(!HHEDUC %in% c("Missing/DK")) %>% droplevels()
+df_2014_hl_normal$HHEDUC <- factor(df_2014_hl_normal$HHEDUC, ordered=TRUE, levels=c("None", "Primary", "Secondary", "Higher"))
+
+#HHREL filtering
+df_2014_hl_normal <- df_2014_hl_normal %>% filter(!HHREL %in% c("Missing")) %>% droplevels()
+df_2014_hl_normal$HHREL <- factor(df_2014_hl_normal$HHREL,
+                                ordered=TRUE, 
+                                levels=c("Christian", "Hindu", "Muslim", "Rastafarian", "Bahai", "No religion", "Other religion"))
+
+
+#windex10
+df_2014_hl_normal$windex10 <- factor(df_2014_hl_normal$windex10, ordered=TRUE, levels = c(1,2,3,4,5,6,7,8,9,10))
+
+str(df_2014_hl_normal)
+summary(df_2014_hl_normal)
+```
+
+
+
+
+#EXPORT
+```{r}
+write_sav(df_2014_hl_normal, "cleaned_df_exports/df_2014_hl_normal.sav")
+write_sav(df_2014_hl_expanded, "cleaned_df_exports/df_2014_hl_expanded.sav")
+```
+
+
+

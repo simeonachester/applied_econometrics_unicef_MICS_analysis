@@ -1,0 +1,36 @@
+variable,category,year,p_value_sig
+SEX,Gender,2019,0
+AREA,Geography,2019,0.922
+REGIONNUMBER,Geography,2019,0
+windex10,Income,2019,0
+HHETHNICITY,Ethnicity,2019,0
+HHEDUC,Distal Education,2019,0
+HHREL,Religion,2019,0
+AGE,Age,2019,0
+MEDUC,Distal Education,2019,0.04
+FEDUC,Distal Education,2019,0
+SEX,Gender,2014,0.088
+INDETHNICITY,Ethnicity,2014,0
+AREA,Geography,2014,0.001
+REGIONNUMBER,Geography,2014,0
+HHREL,Religion,2014,0.491
+HHETHNICITY,Ethnicity,2014,0.12
+HHEDUC,Distal Education,2014,0
+windex10,Income,2014,0
+AGE,Age,2014,0
+MEDUC,Distal Education,2014,0
+FEDUC,Distal Education,2014,0.001
+REGIONNUMBER,Geography,2006,0
+AREA,Geography,2006,0
+SEX,Gender,2006,0.013
+INDETHNICITY,Ethnicity,2006,0
+INDREL,Religion,2006,0.001
+windex10,Income,2006,0
+AGE,Age,2006,0
+FEDUC,Distal Education,2006,0.049
+MEDUC,Distal Education,2006,0.003
+AREA,Geography,2000,0
+REGIONNUMBER,Geography,2000,0
+SEX,Gender,2000,0.005
+windex10,Income,2000,0
+AGE,Age,2000,0
